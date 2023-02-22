@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
@@ -14,8 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Web client for handling https requests and their responses on Android.
@@ -38,7 +37,7 @@ public class WebClient
      * @param body request body
      * @throws IOException if the request body cannot be sent
      */
-    private static void _sendBody(HttpsURLConnection con, Body body) throws IOException
+    private static void _sendBody(HttpURLConnection con, Body body) throws IOException
     {
         con.setDoOutput(true);
 
@@ -60,7 +59,7 @@ public class WebClient
      * @return {@link Response} object containing server's response
      * @throws IOException if an I/O exception occurs while creating the input stream
      */
-    private static Response _getResponse(HttpsURLConnection con) throws IOException
+    private static Response _getResponse(HttpURLConnection con) throws IOException
     {
         int responseCode = con.getResponseCode();
         BufferedReader br;
@@ -92,7 +91,7 @@ public class WebClient
         try
         {
             URL url = new URL(req.URL);
-            HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
             con.setConnectTimeout(timeout);
 
