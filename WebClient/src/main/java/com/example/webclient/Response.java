@@ -30,8 +30,11 @@ public class Response
             ));
         }
 
-        String body_type = headers.get("Content-Type").get(0);
-        if(body_type == null) body_type = "unknown";
+        List<String> content_header = headers.get("Content-Type");
+
+        String body_type = "unknown";
+        if(content_header != null)
+            body_type = content_header.get(0);
 
         BODY = new Body(body_type, body);
     }
