@@ -13,8 +13,13 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Web client for handling https requests and their responses on Android.
@@ -27,6 +32,7 @@ import java.util.concurrent.Executors;
 public class WebClient
 {
     public static ExecutorService executor = Executors.newSingleThreadExecutor();
+    public static ExecutorCompletionService<Response> compExecutor = new ExecutorCompletionService<>(executor);
     public static Handler handler = new Handler(Looper.getMainLooper());
     public static int TIMEOUT = 3000;
 
@@ -126,6 +132,13 @@ public class WebClient
         }
     }
 
+    /**
+     * Sends a request synchronously with a default timeout and receives a response.
+     * @param req request to send.
+     * @return network response.
+     * @throws WebConnectionException if and exception occurs while connecting to the given url.
+     * @throws WebRequestException if the request url is not valid.
+     */
     public static Response sendSync(Request req) throws WebConnectionException, WebRequestException
     {
         return sendSync(req, TIMEOUT);
@@ -160,20 +173,72 @@ public class WebClient
         });
     }
 
+    /**
+     * Sends a request asynchronously with a default timeout and performs on success and on failure actions
+     * according to the given callback.
+     * @param req request to send.
+     * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
+     *                 no actions are performed.
+     */
     public static void sendAsync(Request req, Callback callback)
     {
         sendAsync(req, TIMEOUT, callback);
     }
 
+
+    /**
+     * Sends a request asynchronously with the given timeout and makes the calling thread wait until the Response is received
+     * with the given timeout.
+     * @param req request to be sent
+     * @param conTimeout connection timeout in milliseconds
+     * @param getTimeout result retrieval timeout in milliseconds
+     * @return network response
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
+    public static Response sendAsyncAndWait(Request req, int conTimeout, int getTimeout) throws InterruptedException, ExecutionException, TimeoutException
+    {
+        compExecutor.submit(() -> sendSync(req, conTimeout));
+
+        Future<Response> res = compExecutor.take();
+
+        return res.get(getTimeout, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Sends a request asynchronously with the default timeout and makes the calling thread wait until the Response is received
+     * with the default timeout.
+     * @param req request to be sent
+     * @return network response
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public static Response sendAsyncAndWait(Request req) throws ExecutionException, InterruptedException, TimeoutException
+    {
+        return sendAsyncAndWait(req, TIMEOUT, TIMEOUT);
+    }
+
+    /**
+     * Shuts down the executor.
+     */
     public static void shutdown()
     {
         executor.shutdown();
     }
 
+    /**
+     * Creates a new executor if the current is shutdown. Otherwise does nothing.
+     */
     public static void restart()
     {
         if(executor.isShutdown())
+        {
             executor = Executors.newSingleThreadExecutor();
+            compExecutor = new ExecutorCompletionService<>(executor);
+        }
+
     }
 
 }
