@@ -1,7 +1,10 @@
-package com.example.webclient;
+package com.web.client;
 
 import android.os.Handler;
 import android.os.Looper;
+
+import com.web.exceptions.WebConnectionException;
+import com.web.exceptions.WebRequestException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,6 +16,8 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -22,11 +27,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Web client for handling https requests and their responses on Android.
+ * Static class for handling HTTP requests and responses on Android.
  * This client is able to send REST requests synchronously and asynchronously.
- * Using synchronous requests isn't recommended as they block the main (UI) thread.
+ * Sending requests synchronously on the main (UI) thread isn't recommended,
+ * but do watchu want bestie
  *
- * @author Karlovich Aleksei <i>:)</i>
+ * @author Aleksei Karlovich <i>:)</i>
  */
 
 public class WebClient
@@ -37,74 +43,27 @@ public class WebClient
     public static int TIMEOUT = 3000;
 
     private WebClient(){}
-    /**
-     * Helper method for sending request body in case of POST and PUT requests.
-     * @param con url connection object
-     * @param body request body
-     * @throws IOException if the request body cannot be sent
-     */
-    private static void _sendBody(HttpURLConnection con, Body body) throws IOException
-    {
-        con.setDoOutput(true);
-
-        if(body != null)
-        {
-            con.setRequestProperty("content-type", body.TYPE);
-
-            try(OutputStream os = con.getOutputStream())
-            {
-                byte[] out = body.BODY.getBytes(StandardCharsets.UTF_8);
-                os.write(out, 0, out.length);
-            }
-        }
-    }
-
-    /**
-     * Helper method for receiving the server response to the given request.
-     * @param con url connection object
-     * @return {@link Response} object containing server's response
-     * @throws IOException if an I/O exception occurs while creating the input stream
-     */
-    private static Response _getResponse(HttpURLConnection con) throws IOException
-    {
-        int responseCode = con.getResponseCode();
-        BufferedReader br;
-
-        if(responseCode < 300)
-            br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        else
-            br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
-
-        StringBuilder sb = new StringBuilder(); String line;
-
-        while((line = br.readLine()) != null)
-            sb.append(line);
-
-        br.close();
-
-        return new Response(responseCode, con.getHeaderFields(), sb.toString());
-    }
 
     /**
      * Sends a request synchronously with a timeout and receives a response.
-     * @param req request to send.
-     * @return network response.
-     * @throws WebConnectionException if and exception occurs while connecting to the given url.
-     * @throws WebRequestException if the request url is not valid.
+     * @param req request to send
+     * @return Response object containing network response
+     * @throws WebConnectionException if an exception occurs while connecting to the given url
+     * @throws WebRequestException if the request url is not valid
      */
     public static Response sendSync(Request req, int timeout) throws WebConnectionException, WebRequestException
     {
         try
         {
-            URL url = new URL(req.URL);
+            URL url = new URL(req.url);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
             con.setConnectTimeout(timeout);
 
-            String method = req.METHOD;
+            String method = req.method;
             con.setRequestMethod(method);
 
-            ArrayList<Header> headers = req.HEADERS;
+            ArrayList<Header> headers = req.headers;
 
             if(headers != null)
                 for(Header header : headers)
@@ -112,8 +71,7 @@ public class WebClient
 
             if(method.equals("POST") || method.equals("PUT"))
             {
-                Body body = req.BODY;
-                _sendBody(con, body);
+                _sendBody(con, req.contentType, req.body);
             }
 
             return _getResponse(con);
@@ -134,10 +92,10 @@ public class WebClient
 
     /**
      * Sends a request synchronously with a default timeout and receives a response.
-     * @param req request to send.
-     * @return network response.
-     * @throws WebConnectionException if and exception occurs while connecting to the given url.
-     * @throws WebRequestException if the request url is not valid.
+     * @param req request to send
+     * @return Response object containing network response
+     * @throws WebConnectionException if and exception occurs while connecting to the given url
+     * @throws WebRequestException if the request url is not valid
      */
     public static Response sendSync(Request req) throws WebConnectionException, WebRequestException
     {
@@ -156,14 +114,14 @@ public class WebClient
         executor.execute(() -> {
             try
             {
-                Response res = sendSync(req);
+                Response res = sendSync(req, timeout);
 
                 if(callback != null)
-                    handler.post(() -> {
-                        if(res.RESPONSE_CODE < 300) callback.onSuccess(res);
+                    handler.post(() ->
+                    {
+                        if(res.responseCode < 300) callback.onSuccess(res);
                         else callback.onFailure(res);
                     });
-
             }
             catch (Exception ex)
             {
@@ -184,7 +142,6 @@ public class WebClient
     {
         sendAsync(req, TIMEOUT, callback);
     }
-
 
     /**
      * Sends a request asynchronously with the given timeout and makes the calling thread wait until the Response is received
@@ -221,7 +178,7 @@ public class WebClient
     }
 
     /**
-     * Shuts down the executor.
+     * Shuts down the executor, killing the thread.
      */
     public static void shutdown()
     {
@@ -238,7 +195,65 @@ public class WebClient
             executor = Executors.newSingleThreadExecutor();
             compExecutor = new ExecutorCompletionService<>(executor);
         }
+    }
 
+    /**
+     * Helper method to execute any command off the calling thread.
+     * @param command Runnable command to execute
+     */
+    public static void execute(Runnable command)
+    {
+        executor.execute(command);
+    }
+
+    /**
+     * Helper method for sending request body in case of POST and PUT requests.
+     * @param con url connection object
+     * @param body request body
+     * @throws IOException if the request body cannot be sent
+     */
+    private static void _sendBody(HttpURLConnection con, String contentType, String body) throws IOException
+    {
+        if(contentType != null && body != null)
+        {
+            con.setDoOutput(true);
+            con.setRequestProperty("Content-Type", contentType);
+
+            try(OutputStream os = con.getOutputStream())
+            {
+                byte[] out = body.getBytes(StandardCharsets.UTF_8);
+                os.write(out, 0, out.length);
+            }
+        }
+    }
+
+    /**
+     * Helper method for receiving the server response to the given request.
+     * @param con url connection object
+     * @return {@link Response} object containing server's response
+     * @throws IOException if an I/O exception occurs while creating the input stream
+     */
+    private static Response _getResponse(HttpURLConnection con) throws IOException
+    {
+        int responseCode = con.getResponseCode();
+        BufferedReader br;
+
+        if(responseCode < 300)
+            br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        else
+            br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
+
+        StringBuilder sb = new StringBuilder(); String line;
+
+        while((line = br.readLine()) != null)
+            sb.append(line);
+
+        br.close();
+
+        Map<String, List<String>> headers = con.getHeaderFields();
+        con.disconnect();
+
+        return new Response(responseCode, headers, sb.toString());
     }
 
 }

@@ -1,4 +1,4 @@
-package com.example.webclient;
+package com.web.client;
 
 /**
  * Class containing key and value for a request or response header.

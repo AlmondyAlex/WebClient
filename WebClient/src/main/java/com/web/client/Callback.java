@@ -1,4 +1,4 @@
-package com.example.webclient;
+package com.web.client;
 
 /**
  * This interface is used to specify which actions to perform

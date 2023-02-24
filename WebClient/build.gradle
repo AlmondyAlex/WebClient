@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.webclient'
+    namespace 'com.web.client'
     compileSdk 33
 
     defaultConfig {
@@ -24,6 +24,6 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
+    //implementation 'androidx.appcompat:appcompat:1.6.1'
+    //implementation 'com.google.android.material:material:1.8.0'
 }

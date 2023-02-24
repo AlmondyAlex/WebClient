@@ -1,4 +1,4 @@
-package com.example.webclient;
+package com.web.exceptions;
 
 /**
  * Exception class used for business logic

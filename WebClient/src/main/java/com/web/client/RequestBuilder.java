@@ -1,6 +1,8 @@
-package com.example.webclient;
+package com.web.client;
 
 import android.text.TextUtils;
+
+import com.web.exceptions.WebRequestException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,20 +10,17 @@ import java.util.Arrays;
 /**
  * Class for building requests. While creating a new request,
  * specify request attributes chaining corresponding methods (i.e. {@link RequestBuilder#url(String)}
- * and calling  {@link RequestBuilder#build()} in the end.
+ * and calling {@link RequestBuilder#build()} in the end.
  *
  * @author Aleksei Karlovich
  */
 public class RequestBuilder
 {
-    String URL = null;
-    String METHOD = null;
-    ArrayList<Header> HEADERS = null;
-    Body BODY = null;
+    Request request;
 
     public RequestBuilder()
     {
-        HEADERS = new ArrayList<>();
+        request.headers = new ArrayList<>();
     }
 
     /**
@@ -31,7 +30,7 @@ public class RequestBuilder
      */
     public RequestBuilder url(String URL)
     {
-        this.URL = URL;
+        request.url = URL;
         return this;
     }
 
@@ -42,7 +41,7 @@ public class RequestBuilder
      */
     public RequestBuilder method(String method)
     {
-        this.METHOD = method;
+        request.method = method;
         return this;
     }
 
@@ -54,7 +53,7 @@ public class RequestBuilder
      */
     public RequestBuilder header(String key, String value)
     {
-        this.HEADERS.add(new Header(key, value));
+        request.headers.add(new Header(key, value));
         return this;
     }
 
@@ -74,19 +73,21 @@ public class RequestBuilder
 
         String[] values = Arrays.copyOfRange(data,1, n);
 
-        this.HEADERS.add(new Header(key, TextUtils.join(",",values)));
+        request.headers.add(new Header(key, TextUtils.join(",", values)));
         return this;
     }
 
     /**
      * Adds a body to the request given the content type and payload to be sent.
-     * @param type content type of the payload
-     * @param payload payload to be sent
+     * @param contentType content type of the payload
+     * @param body payload to be sent
      * @return builder object
      */
-    public RequestBuilder body(String type, String payload)
+    public RequestBuilder body(String contentType, String body)
     {
-        this.BODY = new Body(type, payload);
+        request.contentType = contentType;
+        request.body = body;
+
         return this;
     }
 
@@ -97,9 +98,8 @@ public class RequestBuilder
      */
     public Request build() throws WebRequestException
     {
-        Request req = new Request(this);
         validate();
-        return req;
+        return request.clone();
     }
 
     /**
@@ -108,7 +108,7 @@ public class RequestBuilder
      */
     private void validate() throws WebRequestException
     {
-        if(URL == null) throw new WebRequestException("Request URL must not be null");
-        if(METHOD == null) throw new WebRequestException("Request method must not be null");
+        if(request.url == null) throw new WebRequestException("Request URL must not be null");
+        if(request.method == null) throw new WebRequestException("Request method must not be null");
     }
 }
