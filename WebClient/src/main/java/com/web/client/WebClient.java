@@ -2,6 +2,7 @@ package com.web.client;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 
 import com.web.exceptions.WebConnectionException;
 import com.web.exceptions.WebRequestException;
@@ -16,6 +17,8 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -144,6 +147,64 @@ public class WebClient
     }
 
     /**
+     * Send multiple requests asynchronously with their corresponding timeout and performs
+     * actions based on the given callback. Requests are sent in order they appear in the array.
+     * @param reqs requests to send
+     * @param timeout timeout for each of the requests
+     * @param callback actions to perform upon retrieval of responses or an exception
+     */
+    public static void sendAsync(Request[] reqs, int[] timeout, Callbacks callback)
+    {
+        executor.execute(() -> {
+            try
+            {
+                int n = reqs.length;
+                Response[] resps = new Response[n];
+
+                for(int i = 0; i<n; i++)
+                    resps[i] = sendSync(reqs[i], timeout[i]);
+
+                if (callback != null)
+                    handler.post(() -> callback.onResponse(resps));
+            }
+            catch (Exception ex)
+            {
+                if (callback != null)
+                    handler.post(() -> callback.onException(ex));
+            }
+        });
+    }
+
+    /**
+     * Sends multiple requests asynchronously with same timeout for each request and performs
+     * actions based on the given callback. Requests are send in order they appear in the array.
+     * @param reqs requests to send
+     * @param timeout timeout applied for each request
+     * @param callback actions to perform upon retrieval of responses or an exception
+     */
+    public static void sendAsync(Request[] reqs, int timeout, Callbacks callback)
+    {
+        executor.execute(() -> {
+            try
+            {
+                int n = reqs.length;
+                Response[] resps = new Response[n];
+
+                for(int i = 0; i<n; i++)
+                    resps[i] = sendSync(reqs[i], timeout);
+
+                if (callback != null)
+                    handler.post(() -> callback.onResponse(resps));
+            }
+            catch (Exception ex)
+            {
+                if (callback != null)
+                    handler.post(() -> callback.onException(ex));
+            }
+        });
+    }
+
+    /**
      * Sends a request asynchronously with the given timeout and makes the calling thread wait until the Response is received
      * with the given timeout.
      * @param req request to be sent
@@ -178,7 +239,7 @@ public class WebClient
     }
 
     /**
-     * Shuts down the executor, killing the thread.
+     * Shuts down the executor, killing the worker thread.
      */
     public static void shutdown()
     {
@@ -255,5 +316,4 @@ public class WebClient
 
         return new Response(responseCode, headers, sb.toString());
     }
-
 }
