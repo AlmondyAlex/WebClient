@@ -19,7 +19,7 @@ public class Request
     String contentType = null;
     String body = null;
 
-    private Request(){}
+    public Request(){}
 
     public static RequestBuilder newBuilder()
     {

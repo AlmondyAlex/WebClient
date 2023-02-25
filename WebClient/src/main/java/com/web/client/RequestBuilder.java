@@ -20,6 +20,7 @@ public class RequestBuilder
 
     public RequestBuilder()
     {
+        request = new Request();
         request.headers = new ArrayList<>();
     }
 
