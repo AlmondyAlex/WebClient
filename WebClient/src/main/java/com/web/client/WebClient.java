@@ -45,10 +45,10 @@ public class WebClient
     public static Handler handler = new Handler(Looper.getMainLooper());
     public static int TIMEOUT = 3000;
 
-    private WebClient(){}
+    WebClient(){}
 
     /**
-     * Sends a request synchronously with a timeout and receives a response.
+     * Sends a request synchronously with a connection timeout and receives a response.
      * @param req request to send
      * @return Response object containing network response
      * @throws WebConnectionException if an exception occurs while connecting to the given url
@@ -94,7 +94,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request synchronously with a default timeout and receives a response.
+     * Sends a request synchronously with a default connection timeout and receives a response.
      * @param req request to send
      * @return Response object containing network response
      * @throws WebConnectionException if and exception occurs while connecting to the given url
@@ -106,11 +106,11 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with a timeout and performs on success and on failure actions
+     * Sends a request asynchronously with a connection timeout and performs on success and on failure actions
      * according to the given callback.
-     * @param req request to send.
+     * @param req request to send
      * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
-     *                 no actions are performed.
+     *                 no actions are performed
      */
     public static void sendAsync(Request req, int timeout, Callback callback)
     {
@@ -135,11 +135,11 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with a default timeout and performs on success and on failure actions
+     * Sends a request asynchronously with a default connection timeout and performs on success and on failure actions
      * according to the given callback.
-     * @param req request to send.
+     * @param req request to send
      * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
-     *                 no actions are performed.
+     *                 no actions are performed
      */
     public static void sendAsync(Request req, Callback callback)
     {
@@ -147,65 +147,7 @@ public class WebClient
     }
 
     /**
-     * Send multiple requests asynchronously with their corresponding timeout and performs
-     * actions based on the given callback. Requests are sent in order they appear in the array.
-     * @param reqs requests to send
-     * @param timeout timeout for each of the requests
-     * @param callback actions to perform upon retrieval of responses or an exception
-     */
-    public static void sendAsync(Request[] reqs, int[] timeout, Callbacks callback)
-    {
-        executor.execute(() -> {
-            try
-            {
-                int n = reqs.length;
-                Response[] resps = new Response[n];
-
-                for(int i = 0; i<n; i++)
-                    resps[i] = sendSync(reqs[i], timeout[i]);
-
-                if (callback != null)
-                    handler.post(() -> callback.onResponse(resps));
-            }
-            catch (Exception ex)
-            {
-                if (callback != null)
-                    handler.post(() -> callback.onException(ex));
-            }
-        });
-    }
-
-    /**
-     * Sends multiple requests asynchronously with same timeout for each request and performs
-     * actions based on the given callback. Requests are send in order they appear in the array.
-     * @param reqs requests to send
-     * @param timeout timeout applied for each request
-     * @param callback actions to perform upon retrieval of responses or an exception
-     */
-    public static void sendAsync(Request[] reqs, int timeout, Callbacks callback)
-    {
-        executor.execute(() -> {
-            try
-            {
-                int n = reqs.length;
-                Response[] resps = new Response[n];
-
-                for(int i = 0; i<n; i++)
-                    resps[i] = sendSync(reqs[i], timeout);
-
-                if (callback != null)
-                    handler.post(() -> callback.onResponse(resps));
-            }
-            catch (Exception ex)
-            {
-                if (callback != null)
-                    handler.post(() -> callback.onException(ex));
-            }
-        });
-    }
-
-    /**
-     * Sends a request asynchronously with the given timeout and makes the calling thread wait until the Response is received
+     * Sends a request asynchronously with the given connection timeout and makes the calling thread wait until the Response is received
      * with the given timeout.
      * @param req request to be sent
      * @param conTimeout connection timeout in milliseconds
@@ -225,7 +167,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with the default timeout and makes the calling thread wait until the Response is received
+     * Sends a request asynchronously with the default connection timeout and makes the calling thread wait until the Response is received
      * with the default timeout.
      * @param req request to be sent
      * @return network response
@@ -237,6 +179,87 @@ public class WebClient
     {
         return sendAsyncAndWait(req, TIMEOUT, TIMEOUT);
     }
+
+    /**
+     * Sends a request asynchronously with the given connection timeout and performs desired actions,
+     * which can be expressed with lambdas.
+     * @param req request to be sent
+     * @param timeout connection timeout
+     * @param onSuccess called when response code is < 300
+     * @param onFailure called when response code is >= 300
+     * @param onException called when an exception occurs
+     */
+    public static void sendAsync(Request req, int timeout, ResponseHandler onSuccess, ResponseHandler onFailure, ErrorHandler onException)
+    {
+        executor.execute(() -> {
+            try
+            {
+                Response res = sendSync(req, timeout);
+
+                handler.post(() ->
+                {
+                    if(res.responseCode < 300 && onSuccess != null) onSuccess.handle(res);
+                    else if(onFailure != null) onFailure.handle(res);
+                });
+            }
+            catch (Exception ex)
+            {
+                if(onException != null)
+                    handler.post(() -> onException.handle(ex));
+            }
+        });
+    }
+
+    /**
+     * Sends a request asynchronously with the default connection timeout and performs desired actions
+     * which can be expressed with lambdas.
+     * @param req request to be sent
+     * @param onSuccess called when response code is < 300
+     * @param onFailure called when response code is >= 300
+     * @param onException called when an exception occurs
+     */
+    public static void sendAsync(Request req, ResponseHandler onSuccess, ResponseHandler onFailure, ErrorHandler onException)
+    {
+        sendAsync(req, TIMEOUT, onSuccess, onFailure, onException);
+    }
+
+    /**
+     * Sends a request asynchronously with the given connection timeout and performs desired actions
+     * which can be expressed with lambdas.
+     * @param req request to be send
+     * @param timeout connection timeout
+     * @param onResponse called when a response has been received
+     * @param onException called when an exception occurs
+     */
+    public static void sendAsync(Request req, int timeout, ResponseHandler onResponse, ErrorHandler onException)
+    {
+        executor.execute(() -> {
+            try
+            {
+                Response res = sendSync(req, timeout);
+
+                if (onResponse != null)
+                    handler.post(() -> onResponse.handle(res));
+            }
+            catch (Exception ex)
+            {
+                if(onException != null)
+                    handler.post(() -> onException.handle(ex));
+            }
+        });
+    }
+
+    /**
+     * Sends a request asynchronously with the default connection timeout and performs desired
+     * actions which can be expressed with lambdas.
+     * @param req request to be sent
+     * @param onResponse called when a response has been received
+     * @param onException called when an exception occurs
+     */
+   public static void sendAsync(Request req, ResponseHandler onResponse, ErrorHandler onException)
+   {
+       sendAsync(req, TIMEOUT, onResponse, onException);
+   }
 
     /**
      * Shuts down the executor, killing the worker thread.
