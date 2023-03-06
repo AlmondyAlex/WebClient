@@ -224,44 +224,6 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with the given connection timeout and performs desired actions
-     * which can be expressed with lambdas.
-     * @param req request to be send
-     * @param timeout connection timeout
-     * @param onResponse called when a response has been received
-     * @param onException called when an exception occurs
-     */
-    public static void sendAsync(Request req, int timeout, ResponseHandler onResponse, ErrorHandler onException)
-    {
-        executor.execute(() -> {
-            try
-            {
-                Response res = sendSync(req, timeout);
-
-                if (onResponse != null)
-                    handler.post(() -> onResponse.handle(res));
-            }
-            catch (Exception ex)
-            {
-                if(onException != null)
-                    handler.post(() -> onException.handle(ex));
-            }
-        });
-    }
-
-    /**
-     * Sends a request asynchronously with the default connection timeout and performs desired
-     * actions which can be expressed with lambdas.
-     * @param req request to be sent
-     * @param onResponse called when a response has been received
-     * @param onException called when an exception occurs
-     */
-   public static void sendAsync(Request req, ResponseHandler onResponse, ErrorHandler onException)
-   {
-       sendAsync(req, TIMEOUT, onResponse, onException);
-   }
-
-    /**
      * Shuts down the executor, killing the worker thread.
      */
     public static void shutdown()
