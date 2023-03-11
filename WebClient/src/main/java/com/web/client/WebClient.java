@@ -102,7 +102,7 @@ public class WebClient
      */
     public static Response sendSync(Request req) throws WebConnectionException, WebRequestException
     {
-        return sendSync(req, 0);
+        return sendSync(req, TIMEOUT);
     }
 
     /**
@@ -143,7 +143,7 @@ public class WebClient
      */
     public static void sendAsync(Request req, Callback callback)
     {
-        sendAsync(req, 0, callback);
+        sendAsync(req, TIMEOUT, callback);
     }
 
     /**
@@ -178,11 +178,7 @@ public class WebClient
      */
     public static Response sendAsyncAndWait(Request req) throws ExecutionException, InterruptedException, TimeoutException
     {
-        compExecutor.submit(() -> sendSync(req));
-
-        Future<Response> res = compExecutor.take();
-
-        return res.get();
+        return sendAsyncAndWait(req, TIMEOUT, TIMEOUT);
     }
 
     /**
@@ -225,7 +221,7 @@ public class WebClient
      */
     public static void sendAsync(Request req, ResponseHandler onSuccess, ResponseHandler onFailure, ErrorHandler onException)
     {
-        sendAsync(req, 0, onSuccess, onFailure, onException);
+        sendAsync(req, TIMEOUT, onSuccess, onFailure, onException);
     }
 
     /**
@@ -263,7 +259,7 @@ public class WebClient
      */
    public static void sendAsync(Request req, ResponseHandler onResponse, ErrorHandler onException)
    {
-       sendAsync(req, 0, onResponse, onException);
+       sendAsync(req, TIMEOUT, onResponse, onException);
    }
 
     /**
