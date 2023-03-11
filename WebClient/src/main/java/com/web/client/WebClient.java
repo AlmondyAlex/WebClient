@@ -31,7 +31,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * Static class for handling HTTP requests and responses on Android.
- * This client is able to send REST requests synchronously and asynchronously.
+ * This client is able to send requests synchronously and asynchronously.
  * Sending requests synchronously on the main (UI) thread isn't recommended,
  * but do watchu want bestie
  *
@@ -94,7 +94,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request synchronously with a default connection timeout and receives a response.
+     * Sends a request synchronously without a connection timeout and receives a response.
      * @param req request to send
      * @return Response object containing network response
      * @throws WebConnectionException if and exception occurs while connecting to the given url
@@ -102,7 +102,7 @@ public class WebClient
      */
     public static Response sendSync(Request req) throws WebConnectionException, WebRequestException
     {
-        return sendSync(req, TIMEOUT);
+        return sendSync(req, 0);
     }
 
     /**
@@ -135,7 +135,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with a default connection timeout and performs on success and on failure actions
+     * Sends a request asynchronously without a connection timeout and performs on success and on failure actions
      * according to the given callback.
      * @param req request to send
      * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
@@ -143,7 +143,7 @@ public class WebClient
      */
     public static void sendAsync(Request req, Callback callback)
     {
-        sendAsync(req, TIMEOUT, callback);
+        sendAsync(req, 0, callback);
     }
 
     /**
@@ -167,8 +167,9 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with the default connection timeout and makes the calling thread wait until the Response is received
-     * with the default timeout.
+     * Sends a request asynchronously without a connection timeout and makes the calling thread wait
+     * until the Response is received.
+     *
      * @param req request to be sent
      * @return network response
      * @throws ExecutionException
@@ -177,7 +178,11 @@ public class WebClient
      */
     public static Response sendAsyncAndWait(Request req) throws ExecutionException, InterruptedException, TimeoutException
     {
-        return sendAsyncAndWait(req, TIMEOUT, TIMEOUT);
+        compExecutor.submit(() -> sendSync(req));
+
+        Future<Response> res = compExecutor.take();
+
+        return res.get();
     }
 
     /**
@@ -211,7 +216,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with the default connection timeout and performs desired actions
+     * Sends a request asynchronously without connection timeout and performs desired actions
      * which can be expressed with lambdas.
      * @param req request to be sent
      * @param onSuccess called when response code is < 300
@@ -220,7 +225,7 @@ public class WebClient
      */
     public static void sendAsync(Request req, ResponseHandler onSuccess, ResponseHandler onFailure, ErrorHandler onException)
     {
-        sendAsync(req, TIMEOUT, onSuccess, onFailure, onException);
+        sendAsync(req, 0, onSuccess, onFailure, onException);
     }
 
     /**
@@ -250,7 +255,7 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously with the default connection timeout and performs desired
+     * Sends a request asynchronously without connection timeout and performs desired
      * actions which can be expressed with lambdas.
      * @param req request to be sent
      * @param onResponse called when a response has been received
@@ -258,7 +263,7 @@ public class WebClient
      */
    public static void sendAsync(Request req, ResponseHandler onResponse, ErrorHandler onException)
    {
-       sendAsync(req, TIMEOUT, onResponse, onException);
+       sendAsync(req, 0, onResponse, onException);
    }
 
     /**
