@@ -1,4 +1,6 @@
-package com.web.client;
+package com.web.callback;
+
+import com.web.client.Response;
 
 /**
  * This interface is used to specify which actions to perform

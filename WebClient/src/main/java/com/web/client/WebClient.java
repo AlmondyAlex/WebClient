@@ -4,8 +4,12 @@ import android.annotation.TargetApi;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.web.callback.Callback;
+import com.web.callback.ErrorHandler;
+import com.web.callback.ResponseHandler;
 import com.web.exceptions.WebConnectionException;
 import com.web.exceptions.WebRequestException;
+import com.web.utils.DeferredResult;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -41,8 +45,8 @@ import java.util.concurrent.TimeoutException;
  * <br><br>
  * In order to avoid the "Callback Hell" when sending multiple chained requests (meaning one depends
  * on the response of the other), you can either use {@link WebClient#sendSync} in conjunction
- * with {@link WebClient#execute}, or use the {@link CompletableFuture} Response returned by
- * {@link WebClient#sendAsync(Request, int)}. Please note that {@link  CompletableFuture} is only available
+ * with {@link WebClient#execute}, or use the {@link DeferredResult} Response returned by
+ * {@link WebClient#sendAsync(Request, int)}. Please note that {@link  DeferredResult} is only available
  * when targeting API 24 and up.
  *
  * @author Aleksei Karlovich <i>:)</i>
@@ -245,7 +249,7 @@ public class WebClient
    }
 
     /**
-     * Sends the request asynchronously with a given connection timeout and returns a {@link CompletableFuture}
+     * Sends the request asynchronously with a given connection timeout and returns a {@link DeferredResult}
      * object representing the future Response. Call available only when targeting API 24 and up.
      *
      * @param req request to be sent
@@ -254,9 +258,9 @@ public class WebClient
      * @return a {@link CompletableFuture} Response object
      */
    @TargetApi(24)
-   public static CompletableFuture<Response> sendAsync(Request req, int timeout)
+   public static DeferredResult<Response> sendAsync(Request req, int timeout)
    {
-       return CompletableFuture.supplyAsync(() ->
+       return DeferredResult.supplyAsync(() ->
        {
            try
            {
@@ -269,25 +273,16 @@ public class WebClient
    }
 
     /**
-     * Sends the request asynchronously with default connection timeout and returns a {@link CompletableFuture}
+     * Sends the request asynchronously with default connection timeout and returns a {@link DeferredResult}
      * object representing the future Response. Call available only when targeting API 24 and up.
      *
      * @param req request to be sent
      * @return a {@link CompletableFuture} Response object
      */
     @TargetApi(24)
-    public static CompletableFuture<Response> sendAsync(Request req)
+    public static DeferredResult<Response> sendAsync(Request req)
     {
-        return CompletableFuture.supplyAsync(() ->
-        {
-            try
-            {
-                return sendSync(req, CONNECTION_TIMEOUT);
-            } catch (WebConnectionException | WebRequestException e)
-            {
-                throw new RuntimeException(e);
-            }
-        }, executor);
+        return sendAsync(req, CONNECTION_TIMEOUT);
     }
 
     /**

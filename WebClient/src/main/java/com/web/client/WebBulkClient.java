@@ -1,5 +1,7 @@
 package com.web.client;
 
+import com.web.callback.Callbacks;
+
 /**
  * Static class for sending arrays of Requests (bulks) and handling their Responses.
  * Basically an extension of {@link WebClient}, all methods and properties are present

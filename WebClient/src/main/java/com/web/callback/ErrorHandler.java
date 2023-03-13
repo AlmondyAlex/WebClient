@@ -1,4 +1,4 @@
-package com.web.client;
+package com.web.callback;
 
 /**
  * Functional interface mainly to support lambda expressions for handling exceptions.

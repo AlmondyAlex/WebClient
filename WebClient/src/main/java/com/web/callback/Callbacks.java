@@ -1,4 +1,6 @@
-package com.web.client;
+package com.web.callback;
+
+import com.web.client.Response;
 
 /**
  * Interface declaring actions to perform when an array of responses has been received
