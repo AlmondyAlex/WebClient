@@ -95,6 +95,6 @@ public class WebBulkClient extends WebClient
 
     public static void sendAsync(Request[] reqs, Callbacks callback)
     {
-        sendAsync(reqs, TIMEOUT, callback);
+        sendAsync(reqs, CONNECTION_TIMEOUT, callback);
     }
 }

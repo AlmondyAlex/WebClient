@@ -1,8 +1,8 @@
 package com.web.client;
 
+import android.annotation.TargetApi;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 
 import com.web.exceptions.WebConnectionException;
 import com.web.exceptions.WebRequestException;
@@ -17,12 +17,10 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,10 +28,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Static class for handling HTTP requests and responses on Android.
+ * Class containing static methods for handling HTTP requests and responses on Android.
  * This client is able to send requests synchronously and asynchronously.
  * Sending requests synchronously on the main (UI) thread isn't recommended,
  * but do watchu want bestie
+ * <br><br>
+ * By default, results of all requests are posted to the main (UI) thread. If desired, this
+ * behaviour can be changed by setting the static member <code>handler</code>.
+ * <br>
+ * The default connection and retrieval timeouts can be changed by setting the static members
+ * <code>CONNECTION_TIMEOUT</code> and <code>RETRIEVAL_TIMEOUT</code> respectively.
+ * <br><br>
+ * In order to avoid the "Callback Hell" when sending multiple chained requests (meaning one depends
+ * on the response of the other), you can either use {@link WebClient#sendSync} in conjunction
+ * with {@link WebClient#execute}, or use the {@link CompletableFuture} Response returned by
+ * {@link WebClient#sendAsync(Request, int)}. Please note that {@link  CompletableFuture} is only available
+ * when targeting API 24 and up.
  *
  * @author Aleksei Karlovich <i>:)</i>
  */
@@ -41,14 +51,15 @@ import java.util.concurrent.TimeoutException;
 public class WebClient
 {
     public static ExecutorService executor = Executors.newSingleThreadExecutor();
-    public static ExecutorCompletionService<Response> compExecutor = new ExecutorCompletionService<>(executor);
     public static Handler handler = new Handler(Looper.getMainLooper());
-    public static int TIMEOUT = 3000;
+    public static int CONNECTION_TIMEOUT = 3000;
+    public static int RETRIEVAL_TIMEOUT = 3000;
 
     WebClient(){}
 
     /**
-     * Sends a request synchronously with a connection timeout and receives a response.
+     * Sends the request synchronously with a given connection timeout and returns its response.
+     *
      * @param req request to send
      * @return Response object containing network response
      * @throws WebConnectionException if an exception occurs while connecting to the given url
@@ -94,7 +105,8 @@ public class WebClient
     }
 
     /**
-     * Sends a request synchronously without a connection timeout and receives a response.
+     * Sends the request synchronously with default connection timeout and returns its response.
+     *
      * @param req request to send
      * @return Response object containing network response
      * @throws WebConnectionException if and exception occurs while connecting to the given url
@@ -102,15 +114,16 @@ public class WebClient
      */
     public static Response sendSync(Request req) throws WebConnectionException, WebRequestException
     {
-        return sendSync(req, TIMEOUT);
+        return sendSync(req, CONNECTION_TIMEOUT);
     }
 
     /**
-     * Sends a request asynchronously with a connection timeout and performs on success and on failure actions
-     * according to the given callback.
+     * Sends the request asynchronously with a given connection timeout and posts onSuccess and onFailure
+     * callback actions to the handling thread. The callback may be null, then no
+     * actions are posted.
+     *
      * @param req request to send
-     * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
-     *                 no actions are performed
+     * @param callback desired onSuccess and onFailure actions after performing the request
      */
     public static void sendAsync(Request req, int timeout, Callback callback)
     {
@@ -135,55 +148,21 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously without a connection timeout and performs on success and on failure actions
-     * according to the given callback.
+     * Sends the request asynchronously with default connection timeout and posts onSuccess and onFailure
+     * callback actions to the handling thread. The callback may be null, then no actions are posted.
+     *
      * @param req request to send
-     * @param callback desired onSuccess and onFailure actions after performing the request. Can be null, then
-     *                 no actions are performed
+     * @param callback desired onSuccess and onFailure actions after performing the request
      */
     public static void sendAsync(Request req, Callback callback)
     {
-        sendAsync(req, TIMEOUT, callback);
+        sendAsync(req, CONNECTION_TIMEOUT, callback);
     }
 
     /**
-     * Sends a request asynchronously with the given connection timeout and makes the calling thread wait until the Response is received
-     * with the given timeout.
-     * @param req request to be sent
-     * @param conTimeout connection timeout in milliseconds
-     * @param getTimeout result retrieval timeout in milliseconds
-     * @return network response
-     * @throws InterruptedException
-     * @throws ExecutionException
-     * @throws TimeoutException
-     */
-    public static Response sendAsyncAndWait(Request req, int conTimeout, int getTimeout) throws InterruptedException, ExecutionException, TimeoutException
-    {
-        compExecutor.submit(() -> sendSync(req, conTimeout));
-
-        Future<Response> res = compExecutor.take();
-
-        return res.get(getTimeout, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Sends a request asynchronously without a connection timeout and makes the calling thread wait
-     * until the Response is received.
+     * Sends the request asynchronously with a given connection timeout and posts onSuccess and onFailure
+     * callback actions to the handling thread. The actions can be expressed with lambdas and may be null.
      *
-     * @param req request to be sent
-     * @return network response
-     * @throws ExecutionException
-     * @throws InterruptedException
-     * @throws TimeoutException
-     */
-    public static Response sendAsyncAndWait(Request req) throws ExecutionException, InterruptedException, TimeoutException
-    {
-        return sendAsyncAndWait(req, TIMEOUT, TIMEOUT);
-    }
-
-    /**
-     * Sends a request asynchronously with the given connection timeout and performs desired actions,
-     * which can be expressed with lambdas.
      * @param req request to be sent
      * @param timeout connection timeout
      * @param onSuccess called when response code is < 300
@@ -212,8 +191,9 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously without connection timeout and performs desired actions
-     * which can be expressed with lambdas.
+     * Sends the request asynchronously with default connection timeout and posts onSuccess and onFailure
+     * callback actions to the handling thread. The actions can be expressed with lambdas and may be null.
+     *
      * @param req request to be sent
      * @param onSuccess called when response code is < 300
      * @param onFailure called when response code is >= 300
@@ -221,15 +201,16 @@ public class WebClient
      */
     public static void sendAsync(Request req, ResponseHandler onSuccess, ResponseHandler onFailure, ErrorHandler onException)
     {
-        sendAsync(req, TIMEOUT, onSuccess, onFailure, onException);
+        sendAsync(req, CONNECTION_TIMEOUT, onSuccess, onFailure, onException);
     }
 
     /**
-     * Sends a request asynchronously with the given connection timeout and performs desired actions
-     * which can be expressed with lambdas.
+     * Sends the request asynchronously with a given connection timeout and posts onResponse callback
+     * action to the handling thread. The action can be expression with lambda and may be null.
+     *
      * @param req request to be send
      * @param timeout connection timeout
-     * @param onResponse called when a response has been received
+     * @param onResponse called when a response is received
      * @param onException called when an exception occurs
      */
     public static void sendAsync(Request req, int timeout, ResponseHandler onResponse, ErrorHandler onException)
@@ -251,16 +232,101 @@ public class WebClient
     }
 
     /**
-     * Sends a request asynchronously without connection timeout and performs desired
-     * actions which can be expressed with lambdas.
+     * Sends the request asynchronously with default connection timeout and posts onResponse action
+     * to the handling thread. The action can be expressed with lambda and may be null.
+     *
      * @param req request to be sent
      * @param onResponse called when a response has been received
      * @param onException called when an exception occurs
      */
    public static void sendAsync(Request req, ResponseHandler onResponse, ErrorHandler onException)
    {
-       sendAsync(req, TIMEOUT, onResponse, onException);
+       sendAsync(req, CONNECTION_TIMEOUT, onResponse, onException);
    }
+
+    /**
+     * Sends the request asynchronously with a given connection timeout and returns a {@link CompletableFuture}
+     * object representing the future Response. Call available only when targeting API 24 and up.
+     *
+     * @param req request to be sent
+     * @param timeout connection timeout
+     *
+     * @return a {@link CompletableFuture} Response object
+     */
+   @TargetApi(24)
+   public static CompletableFuture<Response> sendAsync(Request req, int timeout)
+   {
+       return CompletableFuture.supplyAsync(() ->
+       {
+           try
+           {
+               return sendSync(req, timeout);
+           } catch (WebConnectionException | WebRequestException e)
+           {
+               throw new RuntimeException(e);
+           }
+       }, executor);
+   }
+
+    /**
+     * Sends the request asynchronously with default connection timeout and returns a {@link CompletableFuture}
+     * object representing the future Response. Call available only when targeting API 24 and up.
+     *
+     * @param req request to be sent
+     * @return a {@link CompletableFuture} Response object
+     */
+    @TargetApi(24)
+    public static CompletableFuture<Response> sendAsync(Request req)
+    {
+        return CompletableFuture.supplyAsync(() ->
+        {
+            try
+            {
+                return sendSync(req, CONNECTION_TIMEOUT);
+            } catch (WebConnectionException | WebRequestException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }, executor);
+    }
+
+    /**
+     * Sends the request asynchronously with a given connection timeout and blocks the calling thread
+     * until the response is received with a given retrieval timeout.
+     *
+     * @param req request to be sent
+     * @param conTimeout connection timeout in milliseconds
+     * @param getTimeout result retrieval timeout in milliseconds
+     *
+     * @return Response object containing network response
+     *
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     * @throws ExecutionException if the computation threw an exception
+     * @throws TimeoutException if the wait timed out
+     */
+    public static Response sendAsyncAndWait(Request req, int conTimeout, int getTimeout) throws InterruptedException, ExecutionException, TimeoutException
+    {
+        Future<Response> res = executor.submit(() -> sendSync(req, conTimeout));
+
+        return res.get(getTimeout, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Sends a request asynchronously with default connection timeout and blocks the calling thread
+     * until the response is received with default retrieval timeout.
+     *
+     * @param req request to be sent
+     *
+     * @return Response object containing network response
+     *
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     * @throws ExecutionException if the computation threw an exception
+     * @throws TimeoutException if the wait timed out
+     */
+    public static Response sendAsyncAndWait(Request req) throws ExecutionException, InterruptedException, TimeoutException
+    {
+        return sendAsyncAndWait(req, CONNECTION_TIMEOUT, RETRIEVAL_TIMEOUT);
+    }
 
     /**
      * Shuts down the executor, killing the worker thread.
@@ -271,19 +337,17 @@ public class WebClient
     }
 
     /**
-     * Creates a new executor if the current is shutdown. Otherwise does nothing.
+     * Shuts down the previous executor and starts a new one.
      */
     public static void restart()
     {
-        if(executor.isShutdown())
-        {
-            executor = Executors.newSingleThreadExecutor();
-            compExecutor = new ExecutorCompletionService<>(executor);
-        }
+        executor.shutdown();
+        executor = Executors.newSingleThreadExecutor();
     }
 
     /**
      * Helper method to execute any command off the calling thread.
+     *
      * @param command Runnable command to execute
      */
     public static void execute(Runnable command)
@@ -293,6 +357,7 @@ public class WebClient
 
     /**
      * Helper method for sending request body in case of POST and PUT requests.
+     *
      * @param con url connection object
      * @param body request body
      * @throws IOException if the request body cannot be sent
@@ -314,6 +379,7 @@ public class WebClient
 
     /**
      * Helper method for receiving the server response to the given request.
+     *
      * @param con url connection object
      * @return {@link Response} object containing server's response
      * @throws IOException if an I/O exception occurs while creating the input stream
