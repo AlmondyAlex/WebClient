@@ -114,7 +114,7 @@ WebClient.execute(() -> {
     Response res = WebClient.sendSync(req);
     String token = new JSONObject(res.getBody()).getString("token");
 
-    Request authReq = new RequestWithToken(token) //new request containing the token
+    Request authReq = requestWithToken(token) //new request containing the token
     Response authRes = WebClient.sendSync(authReq);
 
     //do stuff with the response
@@ -138,7 +138,6 @@ Please note that `DefferedResult` is available only when targeting API 24, since
 > I tried to make my own `CompletableFuture` to avoid API targeting, but honestly it was very frootless lol
 
 # WebBulkClient
-You can use this client to send arrays of requests following the same logic as in `WebClient`
-To be honest, I made it primarily so that it's compatible with my app, but maybe it'll be useful for you as well
+You can use this client to send arrays of requests following the same logic as in `WebClient`. To be honest, I made it primarily so that it's compatible with my app, but maybe it'll be useful for you as well
 
 That's it, thanks for reading and/or using the library!
