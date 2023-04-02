@@ -3,7 +3,7 @@ Hello! This is a simple web client for handling HTTP requests on Android I wrote
 
 This client is able to send requests both synchronously and asynchronously; for more details, please see the sections below.
 
-Current version: 3.3.0; Min API: 21
+Current version: 3.4.0; Min API: 21
 
 # Request
 To start off, you need to create a request. This can be done by calling static method `Request.newBuilder` that will create a new `RequestBuilder`,
