@@ -260,16 +260,7 @@ public class WebClient
    @TargetApi(24)
    public static DeferredResult<Response> sendAsync(Request req, int timeout)
    {
-       return DeferredResult.supplyAsync(() ->
-       {
-           try
-           {
-               return sendSync(req, timeout);
-           } catch (WebConnectionException | WebRequestException e)
-           {
-               throw new RuntimeException(e);
-           }
-       }, executor);
+       return DeferredResult.supplyAsync(() -> sendSync(req, timeout), executor);
    }
 
     /**
