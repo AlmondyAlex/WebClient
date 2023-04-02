@@ -2,10 +2,11 @@ package com.web.utils;
 
 import android.annotation.TargetApi;
 
+import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
 /**
- * Same as {@link Consumer}, but rethrows any checked exceptions as {@link RuntimeException} exceptions.
+ * Same as {@link Consumer}, but rethrows any checked exceptions as {@link CompletionException} exceptions.
  */
 @FunctionalInterface
 @TargetApi(24)
@@ -20,7 +21,7 @@ public interface ThrowingConsumer<T> extends Consumer<T>
         }
         catch (Exception ex)
         {
-            throw new RuntimeException(ex);
+            throw new CompletionException(ex);
         }
     }
 
