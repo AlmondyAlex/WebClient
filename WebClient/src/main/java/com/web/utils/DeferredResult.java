@@ -55,7 +55,7 @@ public class DeferredResult<T>
      */
     public <U> DeferredResult<U> thenApply(ThrowingFunction<? super T, ? extends U> func)
     {
-        return new DeferredResult<>(future.thenApply(func));
+        return new DeferredResult<>(future.thenApplyAsync(func, WebClient.executor));
     }
 
     /**
@@ -63,7 +63,7 @@ public class DeferredResult<T>
      */
     public DeferredResult<Void> thenAccept(ThrowingConsumer<? super T> consumer)
     {
-        return new DeferredResult<>(future.thenAccept(consumer));
+        return new DeferredResult<>(future.thenAcceptAsync(consumer, WebClient.executor));
     }
 
     /**
@@ -72,8 +72,8 @@ public class DeferredResult<T>
      */
     public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler)
     {
-        return new DeferredResult<>(future.thenAccept(
-                message -> handler.post(() -> consumer.accept(message)))
+        return new DeferredResult<>(future.thenAcceptAsync(
+                message -> handler.post(() -> consumer.accept(message)), WebClient.executor)
         );
     }
 
@@ -115,7 +115,7 @@ public class DeferredResult<T>
      */
     public <U> DeferredResult<U> handle(BiFunction<? super T, Throwable, ? extends U> func)
     {
-        return new DeferredResult<>(future.handle(func));
+        return new DeferredResult<>(future.handleAsync(func, WebClient.executor));
     }
 
     /**
