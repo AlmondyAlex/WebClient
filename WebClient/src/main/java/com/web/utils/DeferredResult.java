@@ -18,7 +18,9 @@ import java.util.function.Supplier;
 /**
  * Basically a wrapper around {@link CompletableFuture} with added functionality for
  * using default executors and handlers. Use the {@link DeferredResult#supplyAsync}
- * to get a new {@link DeferredResult} object.
+ * to get a new {@link DeferredResult} object or a no-arg constructor. All of the work is
+ * done off calling thread using either specified {@link Executor} or with {@link WebClient#executor}
+ * executor by default.
  * <br>
  * Any occurring checked exceptions are converted to {@link RuntimeException} exceptions.
  * @param <T> The result type returned by completing the DeferredResult
@@ -28,6 +30,19 @@ public class DeferredResult<T>
 {
     CompletableFuture<T> future;
 
+    /**
+     * Creates a new instance of DeferredResult and its underlying {@link CompletableFuture}.
+     * For more details see {@link CompletableFuture#CompletableFuture()}
+     */
+    public DeferredResult()
+    {
+        this.future = new CompletableFuture<>();
+    }
+
+    /**
+     * Creates a new instance of DeferredResult using the specified {@link CompletableFuture}
+     * @param future
+     */
     DeferredResult(CompletableFuture<T> future)
     {
         this.future = future;
@@ -51,39 +66,73 @@ public class DeferredResult<T>
     }
 
     /**
-     * For more details see {@link CompletableFuture#thenApply(Function)}
+     * For more details see {@link CompletableFuture#thenApplyAsync(Function, Executor)}
+     */
+    public <U> DeferredResult<U> thenApply(ThrowingFunction<? super T, ? extends U> func, Executor executor)
+    {
+        return new DeferredResult<>(future.thenApplyAsync(func, executor));
+    }
+
+    /**
+     * For more details see {@link CompletableFuture#thenApplyAsync(Function)}
      */
     public <U> DeferredResult<U> thenApply(ThrowingFunction<? super T, ? extends U> func)
     {
-        return new DeferredResult<>(future.thenApplyAsync(func, WebClient.executor));
+        return thenApply(func, WebClient.executor);
     }
 
     /**
-     * For more details see {@link CompletableFuture#thenAccept(Consumer)}
+     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer, Executor)}
+     */
+    public DeferredResult<Void> thenAccept(ThrowingConsumer<? super T> consumer, Executor executor)
+    {
+        return new DeferredResult<>(future.thenAcceptAsync(consumer, executor));
+    }
+
+    /**
+     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer)}
      */
     public DeferredResult<Void> thenAccept(ThrowingConsumer<? super T> consumer)
     {
-        return new DeferredResult<>(future.thenAcceptAsync(consumer, WebClient.executor));
+        return thenAccept(consumer, WebClient.executor);
     }
 
     /**
-     * Posts the DeferredResult to the handling thread. For more details see
-     * {@link CompletableFuture#thenAccept(Consumer)}
+     * Posts the consumer to the handling thread. For more details see
+     * {@link CompletableFuture#thenAcceptAsync(Consumer, Executor)}
      */
-    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler)
+    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler, Executor executor)
     {
         return new DeferredResult<>(future.thenAcceptAsync(
-                message -> handler.post(() -> consumer.accept(message)), WebClient.executor)
+                message -> handler.post(() -> consumer.accept(message)), executor)
         );
     }
 
     /**
-     * Posts the DeferredResult to the handling thread, using {@link WebClient#handler}. For more details see
-     * {@link CompletableFuture#thenAccept(Consumer)}
+     * Posts the consumer to the handling thread, using specified handler and {@link WebClient#executor}.
+     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer)}
+     */
+    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler)
+    {
+        return thenPost(consumer, handler, WebClient.executor);
+    }
+
+    /**
+     * Posts the consumer to the handling thread, using {@link WebClient#handler} and specified executor.
+     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer, Executor)}
+     */
+    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Executor executor)
+    {
+        return thenPost(consumer, WebClient.handler, executor);
+    }
+
+    /**
+     * Posts the DeferredResult to the handling thread, using {@link WebClient#handler} and {@link WebClient#executor}.
+     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer)}
      */
     public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer)
     {
-        return thenPost(consumer, WebClient.handler);
+        return thenPost(consumer, WebClient.handler, WebClient.executor);
     }
 
     /**
