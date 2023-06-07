@@ -2,12 +2,12 @@ package com.web.utils;
 
 import android.annotation.TargetApi;
 import android.os.Handler;
-
-import com.web.client.WebClient;
+import android.os.Looper;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
@@ -19,8 +19,8 @@ import java.util.function.Supplier;
  * Basically a wrapper around {@link CompletableFuture} with added functionality for
  * using default executors and handlers. Use the {@link DeferredResult#supplyAsync}
  * to get a new {@link DeferredResult} object or a no-arg constructor. All of the work is
- * done off calling thread using either specified {@link Executor} or with {@link WebClient#executor}
- * executor by default.
+ * done off calling thread using either specified {@link Executor} or with an executor used in
+ * {@link CompletableFuture#supplyAsync} method.
  * <br>
  * Any occurring checked exceptions are converted to {@link RuntimeException} exceptions.
  * @param <T> The result type returned by completing the DeferredResult
@@ -29,48 +29,32 @@ import java.util.function.Supplier;
 public class DeferredResult<T>
 {
     CompletableFuture<T> future;
+    Executor executor;
 
-    /**
-     * Creates a new instance of DeferredResult and its underlying {@link CompletableFuture}.
-     * For more details see {@link CompletableFuture#CompletableFuture()}
-     */
     public DeferredResult()
     {
         this.future = new CompletableFuture<>();
     }
 
-    /**
-     * Creates a new instance of DeferredResult using the specified {@link CompletableFuture}
-     * @param future
-     */
-    DeferredResult(CompletableFuture<T> future)
+    DeferredResult(CompletableFuture<T> future, Executor executor)
     {
         this.future = future;
+        this.executor = executor;
     }
 
-    /**
-     * For more details see {@link CompletableFuture#supplyAsync(Supplier, Executor)}
-     */
     public static <U> DeferredResult<U> supplyAsync(ThrowingSupplier<U> supplier, Executor executor)
     {
-        return new DeferredResult<>(CompletableFuture.supplyAsync(supplier, executor));
+        return new DeferredResult<>(CompletableFuture.supplyAsync(supplier, executor), executor);
     }
 
-    /**
-     * For more details see {@link CompletableFuture#supplyAsync(Supplier)}. Uses the {@link WebClient#executor}
-     * executor.
-     */
     public static <U> DeferredResult<U> supplyAsync(ThrowingSupplier<U> supplier)
     {
-        return supplyAsync(supplier, WebClient.executor);
+        return new DeferredResult<>(CompletableFuture.supplyAsync(supplier), ForkJoinPool.commonPool());
     }
 
-    /**
-     * For more details see {@link CompletableFuture#thenApplyAsync(Function, Executor)}
-     */
     public <U> DeferredResult<U> thenApply(ThrowingFunction<? super T, ? extends U> func, Executor executor)
     {
-        return new DeferredResult<>(future.thenApplyAsync(func, executor));
+        return new DeferredResult<>(future.thenApplyAsync(func, executor), executor);
     }
 
     /**
@@ -78,7 +62,7 @@ public class DeferredResult<T>
      */
     public <U> DeferredResult<U> thenApply(ThrowingFunction<? super T, ? extends U> func)
     {
-        return thenApply(func, WebClient.executor);
+        return thenApply(func, executor);
     }
 
     /**
@@ -86,7 +70,7 @@ public class DeferredResult<T>
      */
     public DeferredResult<Void> thenAccept(ThrowingConsumer<? super T> consumer, Executor executor)
     {
-        return new DeferredResult<>(future.thenAcceptAsync(consumer, executor));
+        return new DeferredResult<>(future.thenAcceptAsync(consumer, executor), executor);
     }
 
     /**
@@ -94,7 +78,7 @@ public class DeferredResult<T>
      */
     public DeferredResult<Void> thenAccept(ThrowingConsumer<? super T> consumer)
     {
-        return thenAccept(consumer, WebClient.executor);
+        return thenAccept(consumer, executor);
     }
 
     /**
@@ -103,36 +87,25 @@ public class DeferredResult<T>
      */
     public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler, Executor executor)
     {
-        return new DeferredResult<>(future.thenAcceptAsync(
-                message -> handler.post(() -> consumer.accept(message)), executor)
+        return new DeferredResult<>(
+                future.thenAcceptAsync(message -> handler.post(() -> consumer.accept(message)), executor),
+                executor
         );
     }
 
-    /**
-     * Posts the consumer to the handling thread, using specified handler and {@link WebClient#executor}.
-     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer)}
-     */
     public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Handler handler)
     {
-        return thenPost(consumer, handler, WebClient.executor);
+        return thenPost(consumer, handler, executor);
     }
 
-    /**
-     * Posts the consumer to the handling thread, using {@link WebClient#handler} and specified executor.
-     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer, Executor)}
-     */
-    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer, Executor executor)
+    public DeferredResult<Void> thenPostToMain(ThrowingConsumer<? super T> consumer, Executor executor)
     {
-        return thenPost(consumer, WebClient.handler, executor);
+        return thenPost(consumer, new Handler(Looper.getMainLooper()), executor);
     }
 
-    /**
-     * Posts the DeferredResult to the handling thread, using {@link WebClient#handler} and {@link WebClient#executor}.
-     * For more details see {@link CompletableFuture#thenAcceptAsync(Consumer)}
-     */
-    public DeferredResult<Void> thenPost(ThrowingConsumer<? super T> consumer)
+    public DeferredResult<Void> thenPostToMain(ThrowingConsumer<? super T> consumer)
     {
-        return thenPost(consumer, WebClient.handler, WebClient.executor);
+        return thenPost(consumer, new Handler(Looper.getMainLooper()), executor);
     }
 
     /**
@@ -164,7 +137,7 @@ public class DeferredResult<T>
      */
     public <U> DeferredResult<U> handle(BiFunction<? super T, Throwable, ? extends U> func)
     {
-        return new DeferredResult<>(future.handleAsync(func, WebClient.executor));
+        return new DeferredResult<>(future.handleAsync(func, executor), executor);
     }
 
     /**
@@ -188,7 +161,12 @@ public class DeferredResult<T>
      */
     public DeferredResult<T> exceptionally(Function<Throwable, ? extends T> func)
     {
-        return new DeferredResult<>(future.exceptionally(func));
+        return new DeferredResult<>(future.exceptionally(func), executor);
+    }
+
+    public DeferredResult<T> exceptionally(Function<Throwable, ? extends T> func, Executor executor)
+    {
+        return new DeferredResult<>(future.exceptionally(func), executor);
     }
 
     /**

@@ -1,53 +1,88 @@
 package com.web.client;
 
-import java.util.ArrayList;
+import android.text.TextUtils;
 
-/**
- * Class containing information necessary for performing a request.
- * To create a new request, call {@link Request#newBuilder()} for the request builder.
- * A request must contain URL to which this request will be sent and a sending method.
- * Request body and headers may be null.
- *
- * @author Aleksei Karlovich
- */
+import com.web.exceptions.RequestException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class Request
 {
+    public final static String GET = "GET";
+    public final static String POST = "POST";
+    public final static String PUT = "PUT";
+    public final static String DELETE = "DELETE";
+
     String url = null;
     String method = null;
-    ArrayList<Header> headers = null;
+    ArrayList<Header> headers = new ArrayList<>();
 
     String contentType = null;
     String body = null;
 
     public Request(){}
 
-    public static RequestBuilder newBuilder()
+    public static Request get(String url)
     {
-        return new RequestBuilder();
+        Request req = new Request();
+        req.url = url;
+        req.method = GET;
+        return req;
     }
 
-    @Override
-    public Request clone()
+    public static Request post(String url)
     {
-        Request request = new Request();
-        request.url = this.url;
-        request.method = this.method;
+        Request req = new Request();
+        req.url = url;
+        req.method = POST;
+        return req;
+    }
 
-        if(this.headers != null)
-        {
-            int n = headers.size();
-            request.headers = new ArrayList<>(n);
-            request.headers.addAll(this.headers);
-        }
+    public Request url(String url)
+    {
+        this.url = url;
+        return this;
+    }
 
-        request.contentType = this.contentType;
-        request.body = this.body;
+    public Request method(String method)
+    {
+        this.method = method;
+        return this;
+    }
 
-        return request;
+    public Request header(String key, String value)
+    {
+        this.headers.add(new Header(key, value));
+        return this;
+    }
+
+    public Request header(String... data)
+    {
+        int n = data.length;
+        if(n < 2) throw new RequestException("Invalid header encountered");
+
+        String key = data[0];
+
+        String[] values = Arrays.copyOfRange(data,1, n);
+
+        this.headers.add(new Header(key, TextUtils.join(",", values)));
+        return this;
+    }
+
+    public Request body(String contentType, String body)
+    {
+        this.contentType = contentType;
+        this.body = body;
+        return this;
     }
 
     public String getUrl() { return url; }
     public String getMethod() { return method; }
     public ArrayList<Header> getHeaders() { return headers; }
+    public String getContentType() { return contentType; }
     public String getBody() { return body; }
+
+
+
 }
