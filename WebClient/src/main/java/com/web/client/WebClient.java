@@ -54,15 +54,12 @@ public class WebClient extends HandlerExecutor
             String method = request.method;
             con.setRequestMethod(method);
 
-
             if(request.headers.size() != 0)
                 for(Header header : request.headers)
                     con.setRequestProperty(header.key, header.value);
 
             if(method.equals(Request.POST) || method.equals(Request.PUT))
-            {
                 sendBody(con, request.contentType, request.body);
-            }
 
             return getResponse(con);
         }
@@ -111,7 +108,7 @@ public class WebClient extends HandlerExecutor
         return sendAsync(req, CONNECTION_TIMEOUT);
     }
 
-    public Response sendAsyncAndWait(Request req, int conTimeout, int getTimeout)
+    public Response sendAsyncAndAwait(Request req, int conTimeout, int getTimeout)
     {
         try
         {
@@ -125,9 +122,9 @@ public class WebClient extends HandlerExecutor
         }
     }
 
-    public Response sendAsyncAndWait(Request req)
+    public Response sendAsyncAndAwait(Request req)
     {
-        return sendAsyncAndWait(req, CONNECTION_TIMEOUT, RETRIEVAL_TIMEOUT);
+        return sendAsyncAndAwait(req, CONNECTION_TIMEOUT, RETRIEVAL_TIMEOUT);
     }
 
     /* HELPER METHODS */

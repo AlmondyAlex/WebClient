@@ -13,7 +13,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Basically a wrapper around {@link CompletableFuture} with added functionality for

@@ -14,6 +14,13 @@ public class Request
     public final static String PUT = "PUT";
     public final static String DELETE = "DELETE";
 
+    public final static String TYPE_JSON = "application/json";
+    public final static String TYPE_XML = "application/xml";
+    public final static String TYPE_URLENCODED = "application/x-www-form-urlencoded";
+    public final static String TYPE_HTML = "text/html";
+    public final static String TYPE_PLAIN = "text/plain";
+    public final static String TYPE_WILDCARD = "*/*";
+
     String url = null;
     String method = null;
     ArrayList<Header> headers = new ArrayList<>();
@@ -82,7 +89,4 @@ public class Request
     public ArrayList<Header> getHeaders() { return headers; }
     public String getContentType() { return contentType; }
     public String getBody() { return body; }
-
-
-
 }
